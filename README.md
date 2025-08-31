@@ -3,9 +3,9 @@ planar_convex_hull
 
 A lightweight library providing a trait to implement a convex hull algorithm on your own datatype.
 
-[`ConvexHull`]: https://docs.rs/planar_convex_hull/0.1.1/planar_convex_hull/trait.ConvexHull.html
-[`convex_hull`]: https://docs.rs/planar_convex_hull/0.1.1/planar_convex_hull/trait.ConvexHull.html#method.convex_hull
-[`Index`]: https://docs.rs/planar_convex_hull/0.1.1/planar_convex_hull/struct.Index.html
+[`ConvexHull`]: https://docs.rs/planar_convex_hull/0.1.2/planar_convex_hull/trait.ConvexHull.html
+[`convex_hull`]: https://docs.rs/planar_convex_hull/0.1.2/planar_convex_hull/trait.ConvexHull.html#method.convex_hull
+[`Index`]: https://docs.rs/planar_convex_hull/0.1.2/planar_convex_hull/struct.Index.html
 
 This library offers the [`ConvexHull`] trait which provides a divide-and-conquer convex hull algorithm in O(n log h) [1, 2]
 via the [`convex_hull`] method. The trait can be implemented easily for any collection type holding point-like types 
