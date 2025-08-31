@@ -86,8 +86,8 @@ pub trait ConvexHull: std::marker::Sync {
     # Literature
 
     1. Liu, Gh., Chen, Cb: A new algorithm for computing the convex hull of a planar point set.
-    J. Zhejiang Univ. - Sci. A 8, 1210–1217 (2007). https://doi.org/10.1631/jzus.2007.A1210
-    2. Saad, Omar: A Convex Hull Algorithm and its implementation in O(n log h) (2017). https://www.codeproject.com/Articles/1210225/Fast-and-improved-D-Convex-Hull-algorithm-and-its
+    J. Zhejiang Univ. - Sci. A 8, 1210–1217 (2007). [https://doi.org/10.1631/jzus.2007.A1210]
+    2. Saad, Omar: A Convex Hull Algorithm and its implementation in O(n log h) (2017). [https://www.codeproject.com/Articles/1210225/Fast-and-improved-D-Convex-Hull-algorithm-and-its]
 
     # Examples
     ```
