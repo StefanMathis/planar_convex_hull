@@ -65,7 +65,7 @@ The `imp` module contains implementations of [`ConvexHull`] for the following co
 * [`Vec<P>`](https://doc.rust-lang.org/std/vec/struct.Vec.html)
 * [`HashMap<usize, P>`](https://doc.rust-lang.org/std/collections/struct.HashMap.html)
 * [`[P; N]`](https://doc.rust-lang.org/std/primitive.array.html) with `N` being the size of the array
-* &[`P`](https://doc.rust-lang.org/std/primitive.slice.html)
+* [`&[P]`](https://doc.rust-lang.org/std/primitive.slice.html)
 * [`Slab<P>`](https://docs.rs/slab/latest/slab/struct.Slab.html) (only available with feature flag **slab** enabled)
 * [`AHashMap<usize, P>`](https://docs.rs/ahash/0.8.12/ahash/struct.AHashMap.html) (only available with feature flag **ahash** enabled)
 
