@@ -16,7 +16,7 @@ which fulfills the following conditions:
 
 # Example implementation
 
-Let's assume we want implement [`ConvexHull`] for a [`newtype`](https://doc.rust-lang.org/rust-by-example/generics/new_types.html) with an underlying slice of `[f64; 2]`. All we need to do is to tell the interface how to randomly access the data and how to iterate over the collection:
+Let's assume we want to implement [`ConvexHull`] for a [`newtype`](https://doc.rust-lang.org/rust-by-example/generics/new_types.html) with an underlying slice of `[f64; 2]`. All we need to do is to tell the interface how to randomly access the data and how to iterate over the collection:
 
 ```rust
 use planar_convex_hull::{ConvexHull, reinterpret};
