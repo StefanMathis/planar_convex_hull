@@ -1,7 +1,7 @@
 planar_convex_hull
 ==================
 
-A lightweight library providing a trait to implement a convex hull algorithm on your own datatype.
+A lightweight library providing a trait for implementing convex hull algorithm on your own datatype.
 
 [`ConvexHull`]: https://docs.rs/planar_convex_hull/0.1.2/planar_convex_hull/trait.ConvexHull.html
 [`convex_hull`]: https://docs.rs/planar_convex_hull/0.1.2/planar_convex_hull/trait.ConvexHull.html#method.convex_hull
@@ -10,20 +10,20 @@ A lightweight library providing a trait to implement a convex hull algorithm on 
 This library offers the [`ConvexHull`] trait which provides a divide-and-conquer convex hull algorithm in O(n log h) [1, 2]
 via the [`convex_hull`] method. The trait can be implemented easily for any collection type holding point-like types 
 which fulfills the following conditions:
-- The point-like types implement `Into<[f64; 2]>`, `std::marker::Sync` and `Clone`,
-- The elements of the collections can be randomly accessed via a `usize` index,
+- The point-like type implements `Into<[f64; 2]>`, `Sync` and `Clone`,
+- The elements of the collections can be randomly accessed via an `usize` index,
 - The elements and their indices can be iterated over.
 
 # Example implementation
 
-Let's assume we want to implement [`ConvexHull`] for a [`newtype`](https://doc.rust-lang.org/rust-by-example/generics/new_types.html) with an underlying slice of `[f64; 2]`. All we need to do is to tell the interface how to randomly access the data and how to iterate over the collection:
+Let's assume we want to implement [`ConvexHull`] for a [`newtype`](https://doc.rust-lang.org/rust-by-example/generics/new_types.html) with an underlying slice of `[f64; 2]`. All we need to do is to tell the trait how to randomly access the data and how to iterate over the collection:
 
 ```rust
 use planar_convex_hull::{ConvexHull, reinterpret};
 
 struct MySlice(&[[f64; 2]])
 
-impl<std::marker::Sync + Clone> ConvexHull for MySlice {
+impl ConvexHull for MySlice {
     /// Index is a newtype of usize and is used to make sure that only indices returned
     /// by convex_hull_iter can be used for random data access.
     fn convex_hull_get(&self, key: Index) -> [f64; 2] {
