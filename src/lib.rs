@@ -27,7 +27,7 @@ the convex hull of a point set. To do so, the methods [`ConvexHull::convex_hull_
 and [`ConvexHull::convex_hull_iter`] (for iterating through the points and the corresponding indices) need to
 be implemented.
 
-The [README / module documentation](https://docs.rs/planar_convex_hull/0.1.0/planar_convex_hull/index.html) shows an example
+The [README / module documentation](https://docs.rs/planar_convex_hull/0.1.1/planar_convex_hull/index.html) shows an example
 how to implement these two methods for a custom data collection.
  */
 pub trait ConvexHull: std::marker::Sync {
