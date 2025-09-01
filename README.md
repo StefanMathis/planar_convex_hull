@@ -19,11 +19,11 @@ which fulfills the following conditions:
 Let's assume we want to implement [`ConvexHull`] for a [`newtype`](https://doc.rust-lang.org/rust-by-example/generics/new_types.html) with an underlying slice of `[f64; 2]`. All we need to do is to tell the trait how to randomly access the data and how to iterate over the collection:
 
 ```rust
-use planar_convex_hull::{ConvexHull, reinterpret};
+use planar_convex_hull::{ConvexHull, Index, reinterpret};
 
-struct MySlice(&[[f64; 2]])
+struct MySlice<'a>(&'a[[f64; 2]]);
 
-impl ConvexHull for MySlice {
+impl<'a> ConvexHull for MySlice<'a> {
     /// Index is a newtype of usize and is used to make sure that only indices returned
     /// by convex_hull_iter can be used for random data access.
     fn convex_hull_get(&self, key: Index) -> [f64; 2] {
@@ -50,12 +50,12 @@ let my_slice = MySlice(&[
 ]);
 
 // Returns a `Vec<Index>`. This vector can now be used to access the points via `convex_hull_get`:
-let hull_i = slice.convex_hull();
-let pts: Vec<[f64; 2]> = hull_i.iter().map(|i| slice.convex_hull_get(*i)).collect();
+let hull_i = my_slice.convex_hull();
+let pts: Vec<[f64; 2]> = hull_i.iter().map(|i| my_slice.convex_hull_get(*i)).collect();
 assert_eq!(pts, vec![[10.0, 4.0], [0.0, 6.0], [-10.0, 4.0], [0.0, 2.0]]);
 
 // Now we want to use the raw usize indices for something else
-let hull = reinterpret(slice.convex_hull());
+let hull = reinterpret(my_slice.convex_hull());
 assert_eq!(hull, vec![0, 2, 1, 3]);
 ```
 
@@ -79,7 +79,7 @@ All features are disabled by default.
 
 ## Parallelizing the divide-and-conquer algorithm
 
-Enabling the **rayon** feature flag parallelizes the divide-and-conquer algorithm.
+Enabling the **rayon** feature parallelizes the divide-and-conquer algorithm.
 
 ## Implementations for foreign datatypes
 

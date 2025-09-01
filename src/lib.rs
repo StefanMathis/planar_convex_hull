@@ -83,6 +83,8 @@ pub trait ConvexHull: std::marker::Sync {
     In addition to the original algorithm descriptions, this implementation also covers edge cases such as all points being located on a
     single line or multiple hull points having the same x- or y- coordinate (see examples below).
 
+    When the **rayon** feature is enabled, the divide-and-conquer part of the algorithm is parallelized.
+
     # Literature
 
     1. Liu, Gh., Chen, Cb: A new algorithm for computing the convex hull of a planar point set.
@@ -662,7 +664,7 @@ impl From<Index> for usize {
 }
 
 /**
-Reinterpret a `Vec<Index>` as a `Vec<usize>`.
+Reinterprets a `Vec<Index>` as a `Vec<usize>`.
 
 Since [`Index`] is a [newtype](https://doc.rust-lang.org/rust-by-example/generics/new_types.html) of `usize`,
 it can be reinterpreted as a `Vec<usize>` without the need for allocations. This is useful if the output
