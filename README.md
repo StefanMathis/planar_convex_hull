@@ -3,9 +3,9 @@ planar_convex_hull
 
 A lightweight library providing a trait for implementing convex hull algorithm on your own datatype.
 
-[`ConvexHull`]: https://docs.rs/planar_convex_hull/0.1.2/planar_convex_hull/trait.ConvexHull.html
-[`convex_hull`]: https://docs.rs/planar_convex_hull/0.1.2/planar_convex_hull/trait.ConvexHull.html#method.convex_hull
-[`Index`]: https://docs.rs/planar_convex_hull/0.1.2/planar_convex_hull/struct.Index.html
+[`ConvexHull`]: https://docs.rs/planar_convex_hull/0.2.0/planar_convex_hull/trait.ConvexHull.html
+[`convex_hull`]: https://docs.rs/planar_convex_hull/0.2.0/planar_convex_hull/trait.ConvexHull.html#method.convex_hull
+[`Index`]: https://docs.rs/planar_convex_hull/0.2.0/planar_convex_hull/struct.Index.html
 
 This library offers the [`ConvexHull`] trait which provides a divide-and-conquer convex hull algorithm in O(n log h) [1, 2]
 via the [`convex_hull`] method. The trait can be implemented easily for any collection type holding point-like types 
@@ -14,18 +14,20 @@ which fulfills the following conditions:
 - The elements of the collections can be randomly accessed via an `usize` index,
 - The elements and their indices can be iterated over.
 
+The full API documentation is available at [https://docs.rs/planar_convex_hull/0.2.0/planar_convex_hull/](https://docs.rs/planar_convex_hull/0.2.0/planar_convex_hull/).
+
 # Example implementation
 
-Let's assume we want to implement [`ConvexHull`] for a [`newtype`](https://doc.rust-lang.org/rust-by-example/generics/new_types.html) with an underlying slice of `[f64; 2]`. All we need to do is to tell the trait how to randomly access the data and how to iterate over the collection:
-
+Let's assume we want to implement [`ConvexHull`] for a [`newtype`](https://doc.rust-lang.org/rust-by-example/generics/new_types.html) wrapper around a slice of `[f64; 2]`. All we need to do is to tell the trait how to randomly access the data and how to iterate over the collection:
 ```rust
-use planar_convex_hull::{ConvexHull, Index, reinterpret};
+use planar_convex_hull::{ConvexHull, Index, reinterpret, reinterpret_ref};
 
 struct MySlice<'a>(&'a[[f64; 2]]);
 
 impl<'a> ConvexHull for MySlice<'a> {
     /// Index is a newtype of usize and is used to make sure that only indices returned
-    /// by convex_hull_iter can be used for random data access.
+    /// by convex_hull_iter can be used for random data access. It can be converted into
+    /// usize via the corresponding `From` implementation.
     fn convex_hull_get(&self, key: Index) -> [f64; 2] {
         // SAFETY: Index is only generated within the convex_hull method out of indices
         // returned by convex_hull_iter (which are known to be valid)
@@ -50,13 +52,19 @@ let my_slice = MySlice(&[
 ]);
 
 // Returns a `Vec<Index>`. This vector can now be used to access the points via `convex_hull_get`:
-let hull_i = my_slice.convex_hull();
-let pts: Vec<[f64; 2]> = hull_i.iter().map(|i| my_slice.convex_hull_get(*i)).collect();
+let hull = my_slice.convex_hull();
+let pts: Vec<[f64; 2]> = hull.iter().map(|i| my_slice.convex_hull_get(*i)).collect();
 assert_eq!(pts, vec![[10.0, 4.0], [0.0, 6.0], [-10.0, 4.0], [0.0, 2.0]]);
 
-// Now we want to use the raw usize indices for something else
-let hull = reinterpret(my_slice.convex_hull());
-assert_eq!(hull, vec![0, 2, 1, 3]);
+// Now we want to use the raw usize indices for something else. We can either reinterpret
+// a `&'a [Index]` as a `&'a [usize]` ...
+let hull_usize_slice = reinterpret_ref(hull.as_slice());
+assert_eq!(hull_usize_slice, &[0, 2, 1, 3]);
+
+// ... or convert the `Vec<Index>` into a `Vec<usize>`. Both operations do simply reinterpret
+// the bits, since `Index` is defined as a transparent newtype around usize.
+let hull_usize_vec = reinterpret(hull);
+assert_eq!(hull_usize_vec, vec![0, 2, 1, 3]);
 ```
 
 # Predefined implementations

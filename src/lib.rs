@@ -684,13 +684,13 @@ let vec: Vec<[f64; 2]> = vec![
 ];
 
 // Returns a `Vec<Index>`. This vector can now be used to access the points via `convex_hull_get`:
-let hull_i = vec.convex_hull();
-let pts: Vec<[f64; 2]> = hull_i.iter().map(|i| vec.convex_hull_get(*i)).collect();
+let hull = vec.convex_hull();
+let pts: Vec<[f64; 2]> = hull.iter().map(|i| vec.convex_hull_get(*i)).collect();
 assert_eq!(pts, vec![[1.0, 1.0], [0.0, 1.0], [0.0, 0.0], [1.0, 0.0]]);
 
 // Now we want to use the raw usize indices for something else
-let hull = reinterpret(hull_i);
-assert_eq!(hull, vec![3, 2, 0, 1]);
+let hull_usize = reinterpret(hull);
+assert_eq!(hull_usize, vec![3, 2, 0, 1]);
 ```
  */
 pub fn reinterpret(index_vec: Vec<Index>) -> Vec<usize> {
@@ -707,4 +707,37 @@ pub fn reinterpret(index_vec: Vec<Index>) -> Vec<usize> {
 
     // SAFETY: the above conditions are met
     unsafe { Vec::from_raw_parts(ptr, len, cap) }
+}
+
+/**
+Like [`reinterpret`], but reinterprets a slice instead of a vector.
+
+# Examples
+
+```
+use planar_convex_hull::{ConvexHull, reinterpret_ref};
+
+let vec: Vec<[f64; 2]> = vec![
+    [0.0, 0.0],
+    [1.0, 0.0],
+    [0.0, 1.0],
+    [1.0, 1.0],
+];
+
+// Returns a `Vec<Index>`. This vector can now be used to access the points via `convex_hull_get`:
+let hull = vec.convex_hull();
+let pts: Vec<[f64; 2]> = hull.iter().map(|i| vec.convex_hull_get(*i)).collect();
+assert_eq!(pts, vec![[1.0, 1.0], [0.0, 1.0], [0.0, 0.0], [1.0, 0.0]]);
+
+// Now we want to use the raw usize indices for something else
+let hull_usize = reinterpret_ref(hull.as_slice());
+assert_eq!(hull_usize, &[3, 2, 0, 1]);
+```
+ */
+pub fn reinterpret_ref(index_slice: &[Index]) -> &[usize] {
+    // SAFETY:
+    // - Index is #[repr(transparent)] over usize, so they have the same memory layout
+    // - A slice is a fat pointer (ptr + len), and we are only changing the type from Index to usize
+    // - Thus, reinterpretation is safe as long as Index contains only a usize
+    unsafe { std::slice::from_raw_parts(index_slice.as_ptr() as *const usize, index_slice.len()) }
 }
