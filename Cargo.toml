@@ -1,6 +1,6 @@
 [package]
 name = "planar_convex_hull"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 description = "A trait for implementing a planar convex hull algorithm for your own collection type"
 readme = "README.md"
@@ -24,3 +24,6 @@ rayon = ["dep:rayon"]
 [dev-dependencies]
 nalgebra = { version = "0.32"}
 planar_convex_hull = { path = ".", features = ["ahash", "slab", "rayon"] } 
+
+[package.metadata.docs.rs]
+features = ["ahash", "slab", "rayon"]

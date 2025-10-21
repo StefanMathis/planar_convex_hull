@@ -11,7 +11,7 @@ use std::ops::Bound::Unbounded;
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
 
-pub mod imp;
+pub mod convex_hull_impl;
 
 /**
 A trait for implementing a planar convex hull algorithm for a collection type.
@@ -83,7 +83,7 @@ pub trait ConvexHull: std::marker::Sync {
     In addition to the original algorithm descriptions, this implementation also covers edge cases such as all points being located on a
     single line or multiple hull points having the same x- or y- coordinate (see examples below).
 
-    When the **rayon** feature is enabled, the divide-and-conquer part of the algorithm is parallelized.
+    When the  `rayon ` feature is enabled, the divide-and-conquer part of the algorithm is parallelized.
 
     # Literature
 
