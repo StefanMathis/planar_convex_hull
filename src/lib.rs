@@ -47,6 +47,7 @@ pub trait ConvexHull: std::marker::Sync {
             return unsafe { self.get_unchecked(usize::from(key)) }
                 .clone()
                 .into();
+        }
     }
     ```
      */
