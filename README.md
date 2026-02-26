@@ -1,24 +1,34 @@
 planar_convex_hull
 ==================
 
-A lightweight library providing a trait for implementing convex hull algorithm on your own datatype.
+A lightweight library providing a trait for implementing convex hull algorithm
+on your own datatype.
+
+> **Feedback welcome!**  
+> Found a bug, missing docs, or have a feature request?  
+> Please open an issue on GitHub.
 
 [`ConvexHull`]: https://docs.rs/planar_convex_hull/0.2.1/planar_convex_hull/trait.ConvexHull.html
 [`convex_hull`]: https://docs.rs/planar_convex_hull/0.2.1/planar_convex_hull/trait.ConvexHull.html#method.convex_hull
 [`Index`]: https://docs.rs/planar_convex_hull/0.2.1/planar_convex_hull/struct.Index.html
 
-This library offers the [`ConvexHull`] trait which provides a divide-and-conquer convex hull algorithm in O(n log h) [1, 2]
-via the [`convex_hull`] method. The trait can be implemented easily for any collection type holding point-like types 
+This library offers the [`ConvexHull`] trait which provides a divide-and-conquer
+convex hull algorithm in O(n log h) [1, 2] via the [`convex_hull`] method. The
+trait can be implemented easily for any collection type holding point-like types 
 which fulfills the following conditions:
 - The point-like type implements `Into<[f64; 2]>`, `Sync` and `Clone`,
 - The elements of the collections can be randomly accessed via an `usize` index,
 - The elements and their indices can be iterated over.
 
-The full API documentation is available at [https://docs.rs/planar_convex_hull/0.2.1/planar_convex_hull/](https://docs.rs/planar_convex_hull/0.2.1/planar_convex_hull/).
+The full API documentation is available at
+[https://docs.rs/planar_convex_hull/0.2.1/planar_convex_hull/](https://docs.rs/planar_convex_hull/0.2.1/planar_convex_hull/).
 
 # Example implementation
 
-Let's assume we want to implement [`ConvexHull`] for a [`newtype`](https://doc.rust-lang.org/rust-by-example/generics/new_types.html) wrapper around a slice of `[f64; 2]`. All we need to do is to tell the trait how to randomly access the data and how to iterate over the collection:
+Let's assume we want to implement [`ConvexHull`] for a
+[`newtype`](https://doc.rust-lang.org/rust-by-example/generics/new_types.html)
+wrapper around a slice of `[f64; 2]`. All we need to do is to tell the trait how
+to randomly access the data and how to iterate over the collection:
 ```rust
 use planar_convex_hull::{ConvexHull, Index, reinterpret, reinterpret_ref};
 
@@ -69,17 +79,23 @@ assert_eq!(hull_usize_vec, vec![0, 2, 1, 3]);
 
 # Predefined implementations
 
-The `imp` module contains implementations of [`ConvexHull`] for the following collection types with `P: Into<[f64; 2]>`:
+The `imp` module contains implementations of [`ConvexHull`] for the following
+collection types with `P: Into<[f64; 2]>`:
 * [`Vec<P>`](https://doc.rust-lang.org/std/vec/struct.Vec.html)
 * [`HashMap<usize, P>`](https://doc.rust-lang.org/std/collections/struct.HashMap.html)
-* [`[P; N]`](https://doc.rust-lang.org/std/primitive.array.html) with `N` being the size of the array
+* [`[P; N]`](https://doc.rust-lang.org/std/primitive.array.html) with `N` being
+the size of the array
 * [`&[P]`](https://doc.rust-lang.org/std/primitive.slice.html)
-* [`Slab<P>`](https://docs.rs/slab/latest/slab/struct.Slab.html) (only available with feature flag  `slab ` enabled)
-* [`AHashMap<usize, P>`](https://docs.rs/ahash/0.8.12/ahash/struct.AHashMap.html) (only available with feature flag  `ahash ` enabled)
+* [`Slab<P>`](https://docs.rs/slab/latest/slab/struct.Slab.html) (only available
+with feature flag  `slab ` enabled)
+* [`AHashMap<usize, P>`](https://docs.rs/ahash/0.8.12/ahash/struct.AHashMap.html)
+(only available with feature flag  `ahash ` enabled)
 
-Please open an issue on the repository website [https://github.com/StefanMathis/planar_convex_hull](https://github.com/StefanMathis/planar_convex_hull) if you need an implementation of [`ConvexHull`] for additional collection types. You can also use
-the [`newtype`](https://doc.rust-lang.org/rust-by-example/generics/new_types.html) idiom as shown in the example for a reference
-of a foreign collection instead (since all methods of [`ConvexHull`] operate on shared references).
+Please open an issue on the repository website
+[https://github.com/StefanMathis/planar_convex_hull](https://github.com/StefanMathis/planar_convex_hull) if you need an implementation of [`ConvexHull`] for additional collection types. You can also
+use the [`newtype`](https://doc.rust-lang.org/rust-by-example/generics/new_types.html)
+idiom as shown in the example for a reference of a foreign collection instead
+(since all methods of [`ConvexHull`] operate on shared references).
 
 # Feature flags
 
@@ -91,10 +107,13 @@ Enabling the  `rayon ` feature parallelizes the divide-and-conquer algorithm.
 
 ## Implementations for foreign datatypes
 
-The flags  `slab ` and  `ahash ` provide [`ConvexHull`] implementations for foreign data types. See [Predefined implementations](#predefined-implementations).
+The flags  `slab ` and  `ahash ` provide [`ConvexHull`] implementations for
+foreign data types. See [Predefined implementations](#predefined-implementations).
 
 # Literature
 
-1. Liu, Gh., Chen, Cb: A new algorithm for computing the convex hull of a planar point set.
+1. Liu, Gh., Chen, Cb: A new algorithm for computing the convex hull of a planar
+point set.
 J. Zhejiang Univ. - Sci. A 8, 1210–1217 (2007). <https://doi.org/10.1631/jzus.2007.A1210>
-2. Saad, Omar: A Convex Hull Algorithm and its implementation in O(n log h) (2017). <https://www.codeproject.com/Articles/1210225/Fast-and-improved-D-Convex-Hull-algorithm-and-its>
+2. Saad, Omar: A Convex Hull Algorithm and its implementation in O(n log h)
+(2017). <https://www.codeproject.com/Articles/1210225/Fast-and-improved-D-Convex-Hull-algorithm-and-its>
