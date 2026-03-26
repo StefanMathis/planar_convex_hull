@@ -1,8 +1,12 @@
 planar_convex_hull
 ==================
 
+[![Documentation](https://docs.rs/planar_convex_hull/badge.svg)](https://docs.rs/planar_convex_hull)
+
 A lightweight library providing a trait for implementing convex hull algorithm
 on your own datatype.
+
+The full API documentation is available at https://docs.rs/planar_convex_hull/0.2.1/planar_convex_hull.
 
 > **Feedback welcome!**  
 > Found a bug, missing docs, or have a feature request?  
@@ -103,11 +107,11 @@ All features are disabled by default.
 
 ## Parallelizing the divide-and-conquer algorithm
 
-Enabling the  `rayon ` feature parallelizes the divide-and-conquer algorithm.
+Enabling the `rayon` feature parallelizes the divide-and-conquer algorithm.
 
 ## Implementations for foreign datatypes
 
-The flags  `slab ` and  `ahash ` provide [`ConvexHull`] implementations for
+The flags `slab` and `ahash` provide [`ConvexHull`] implementations for
 foreign data types. See [Predefined implementations](#predefined-implementations).
 
 # Literature
