@@ -1,4 +1,14 @@
-#![doc = include_str!("../README.md")]
+/*!
+[`ConvexHull`]: crate::ConvexHull
+[`convex_hull`]: crate::ConvexHull::convex_hull
+[`Index`]: crate::Index
+
+A lightweight library providing a trait for implementing convex hull algorithm
+on your own datatype.
+
+ */
+#![doc = include_str!("../docs/main.md")]
+#![deny(missing_docs)]
 
 use ordered_float::OrderedFloat;
 use std::cmp::Ordering;
@@ -148,7 +158,8 @@ pub trait ConvexHull: std::marker::Sync {
     ```
      */
     fn convex_hull(&self) -> Vec<Index> {
-        // Step 1: Identify the four point-pairs defining each quadrant. A quadrant is defined by the x-value of one point and the y-value of the other point.
+        // Step 1: Identify the four point-pairs defining each quadrant. A quadrant is
+        // defined by the x-value of one point and the y-value of the other point.
         let mut q1x: usize = usize::MAX;
         let mut q1y: usize = usize::MAX;
         let mut q2x: usize = usize::MAX;
@@ -322,7 +333,8 @@ pub trait ConvexHull: std::marker::Sync {
             return vec![Index(q1x)];
         }
 
-        // Step 2: Construct the convex hull in each quadrant. Filter all points which are not in the initial point set
+        // Step 2: Construct the convex hull in each quadrant. Filter all points which
+        // are not in the initial point set
         let mut partial_hull_q1: BTreeMap<OrderedFloat<f64>, usize> = BTreeMap::new();
         if q1x != usize::MAX {
             partial_hull_q1.insert(OrderedFloat(-q1x_pt[0]), q1x);
@@ -382,14 +394,17 @@ pub trait ConvexHull: std::marker::Sync {
             q3y_pt: [f64; 2],
             q4x_pt: [f64; 2],
         ) {
-            // In q1 and q2, the search for new convex hull points starts with the largest x-value and stops with the smallest x-value of the quadrant.
-            // In q3 and q4, the search starts with the smallest x-value and ends with the largest. To use the same code inside the loop,
-            // the signs of the x-values in q1 and q2 are flipped.
+            // In q1 and q2, the search for new convex hull points starts with the largest
+            // x-value and stops with the smallest x-value of the quadrant.
+            // In q3 and q4, the search starts with the smallest x-value and ends with the
+            // largest. To use the same code inside the loop, the signs of the
+            // x-values in q1 and q2 are flipped.
             let orientation = 1.0 - (2.0 * (quadrant < 2) as i32 as f64);
 
             for (c, pt_c) in this.convex_hull_iter() {
                 // Skip any non-real points
-                // Inverting "is_finite" also catches NaN (is_infinite only catches infinite values, not NaN)
+                // Inverting "is_finite" also catches NaN (is_infinite only catches infinite
+                // values, not NaN)
                 if !pt_c[0].is_finite() || !pt_c[1].is_finite() {
                     continue;
                 }
@@ -461,8 +476,10 @@ pub trait ConvexHull: std::marker::Sync {
 
                 let x = OrderedFloat(orientation * pt_c[0]);
 
-                // Find the two points inside the current partial hull whose x-values form the closest bracket around the x-value of pt_c
-                // If one of the range methods yields an empty iterator, pt_c is not inside the current quadrant and can therefore be skipped.
+                // Find the two points inside the current partial hull whose x-values form the
+                // closest bracket around the x-value of pt_c If one of the
+                // range methods yields an empty iterator, pt_c is not inside the current
+                // quadrant and can therefore be skipped.
                 let lower_clamp = match partial_hull.range((Unbounded, Excluded(x))).next() {
                     Some(val) => val,
                     None => continue,
@@ -514,7 +531,8 @@ pub trait ConvexHull: std::marker::Sync {
                                 let cross_prod = (pt_c[0] - pt_d[0]) * (pt_a[1] - pt_d[1])
                                     - (pt_c[1] - pt_d[1]) * (pt_a[0] - pt_d[0]);
 
-                                // If true, A / B is on the left of DC / CD and is therefore discarded.
+                                // If true, A / B is on the left of DC / CD and is therefore
+                                // discarded.
                                 if cross_prod > 0.0 {
                                     partial_hull.remove(&OrderedFloat(pt_a[0] * orientation));
 
@@ -543,7 +561,8 @@ pub trait ConvexHull: std::marker::Sync {
                                 let cross_prod = (pt_d[0] - pt_c[0]) * (pt_b[1] - pt_c[1])
                                     - (pt_d[1] - pt_c[1]) * (pt_b[0] - pt_c[0]);
 
-                                // If true, A / B is on the left of DC / CD and is therefore discarded.
+                                // If true, A / B is on the left of DC / CD and is therefore
+                                // discarded.
                                 if cross_prod > 0.0 {
                                     partial_hull.remove(&OrderedFloat(pt_b[0] * orientation));
 
@@ -614,8 +633,8 @@ pub trait ConvexHull: std::marker::Sync {
         let mut resulting_hull: Vec<Index> = Vec::new();
 
         for mut partial_hull in partial_hulls.into_iter() {
-            // Check if the first value of the new partial hull equals the current last value of the assembled hull.
-            // If so, it is discarded
+            // Check if the first value of the new partial hull equals the current last
+            // value of the assembled hull. If so, it is discarded
             if let Some(last) = resulting_hull.last() {
                 if let Some(first) = partial_hull.pop_first() {
                     if first.1 != usize::from(last.clone()) {
@@ -737,8 +756,10 @@ assert_eq!(hull_usize, &[3, 2, 0, 1]);
  */
 pub fn reinterpret_ref(index_slice: &[Index]) -> &[usize] {
     // SAFETY:
-    // - Index is #[repr(transparent)] over usize, so they have the same memory layout
-    // - A slice is a fat pointer (ptr + len), and we are only changing the type from Index to usize
+    // - Index is #[repr(transparent)] over usize, so they have the same memory
+    //   layout
+    // - A slice is a fat pointer (ptr + len), and we are only changing the type
+    //   from Index to usize
     // - Thus, reinterpretation is safe as long as Index contains only a usize
     unsafe { std::slice::from_raw_parts(index_slice.as_ptr() as *const usize, index_slice.len()) }
 }
