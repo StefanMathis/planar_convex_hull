@@ -467,9 +467,8 @@ pub trait ConvexHull: std::marker::Sync {
                     _ => unreachable!(),
                 }
 
-                /*
-                Exclude all degenerate partial hulls. A partial hull is one which only has one entry.
-                 */
+                // Exclude all degenerate partial hulls. A partial hull is one which only has
+                // one entry.
                 if is_degenerate {
                     continue;
                 }
@@ -477,23 +476,21 @@ pub trait ConvexHull: std::marker::Sync {
                 let x = OrderedFloat(orientation * pt_c[0]);
 
                 // Find the two points inside the current partial hull whose x-values form the
-                // closest bracket around the x-value of pt_c If one of the
+                // closest bracket around the x-value of pt_c. If one of the
                 // range methods yields an empty iterator, pt_c is not inside the current
                 // quadrant and can therefore be skipped.
-                let lower_clamp = match partial_hull.range((Unbounded, Excluded(x))).next() {
-                    Some(val) => val,
+                let a = match partial_hull.range((Unbounded, Excluded(x))).last() {
+                    Some(lower_clamp) => *lower_clamp.1,
                     None => continue,
                 };
-                let upper_clamp = match partial_hull.range((Excluded(x), Unbounded)).next() {
-                    Some(val) => val,
+                let b = match partial_hull.range((Excluded(x), Unbounded)).next() {
+                    Some(upper_clamp) => *upper_clamp.1,
                     None => continue,
                 };
-
-                let a = *lower_clamp.1;
-                let b = *upper_clamp.1;
 
                 /*
-                SAFETY: Since any of the indices in the partial hull is a valid index for the input vector, this operation is never out of bounds.
+                SAFETY: Since any of the indices in the partial hull is a valid
+                index for the input vector, this operation is never out of bounds.
                  */
                 let mut pt_a = this.convex_hull_get(Index(a));
                 let mut pt_b = this.convex_hull_get(Index(b));
@@ -504,13 +501,13 @@ pub trait ConvexHull: std::marker::Sync {
                 If (cross_prod = 0) then C is on the line => C is part of the convex hull but does not invalidate any of the previous convex hull points
                 If (cross_prod < 0) then C is to the right => C is part of the convex hull and possibly invalidates A and/or B as well as neighboring points of A and B
 
-                The last step is done by recursively reading the left / right neighbor of A / B (called D) from here on. If A / B is located on the left of DC / CD,
+                The last step is done by repeatedly reading the left / right neighbor of A / B (called D) from here on. If A / B is located on the left of DC / CD,
                 A / B is discarded and D is assigned as the next A / B. If A / B has no neighbors or if A / B is not located on the left of DC / CD, the main loop continues.
                  */
-                let cross_prod = (pt_b[0] - pt_a[0]) * (pt_c[1] - pt_a[1])
+                let cross_prod_abc = (pt_b[0] - pt_a[0]) * (pt_c[1] - pt_a[1])
                     - (pt_b[1] - pt_a[1]) * (pt_c[0] - pt_a[0]);
 
-                if let Some(ordering) = cross_prod.partial_cmp(&0.0) {
+                if let Some(ordering) = cross_prod_abc.partial_cmp(&0.0) {
                     match ordering {
                         Ordering::Less => {
                             // Check all neighbors on the left of A
@@ -520,10 +517,10 @@ pub trait ConvexHull: std::marker::Sync {
                                         Unbounded,
                                         Excluded(OrderedFloat(pt_a[0] * orientation)),
                                     ))
-                                    .next()
+                                    .last()
                                 {
                                     Some(val) => *val.1,
-                                    None => break, // A / B has no neighbor in search direction
+                                    None => break, // A has no neighbor in search direction
                                 };
                                 let pt_d = this.convex_hull_get(Index(d));
 
@@ -531,9 +528,8 @@ pub trait ConvexHull: std::marker::Sync {
                                 let cross_prod = (pt_c[0] - pt_d[0]) * (pt_a[1] - pt_d[1])
                                     - (pt_c[1] - pt_d[1]) * (pt_a[0] - pt_d[0]);
 
-                                // If true, A / B is on the left of DC / CD and is therefore
-                                // discarded.
-                                if cross_prod > 0.0 {
+                                // If true, A is on the left of DC and is therefore discarded.
+                                if cross_prod >= 0.0 {
                                     partial_hull.remove(&OrderedFloat(pt_a[0] * orientation));
 
                                     // Replace A with D
@@ -553,7 +549,7 @@ pub trait ConvexHull: std::marker::Sync {
                                     .next()
                                 {
                                     Some(val) => *val.1,
-                                    None => break, // A / B has no neighbor in search direction
+                                    None => break, // B has no neighbor in search direction
                                 };
                                 let pt_d = this.convex_hull_get(Index(d));
 
@@ -561,9 +557,8 @@ pub trait ConvexHull: std::marker::Sync {
                                 let cross_prod = (pt_d[0] - pt_c[0]) * (pt_b[1] - pt_c[1])
                                     - (pt_d[1] - pt_c[1]) * (pt_b[0] - pt_c[0]);
 
-                                // If true, A / B is on the left of DC / CD and is therefore
-                                // discarded.
-                                if cross_prod > 0.0 {
+                                // If true, B is on the left of CD and is therefore discarded.
+                                if cross_prod >= 0.0 {
                                     partial_hull.remove(&OrderedFloat(pt_b[0] * orientation));
 
                                     // Replace B with D
@@ -576,10 +571,7 @@ pub trait ConvexHull: std::marker::Sync {
                             // Add C to the partial hull
                             partial_hull.insert(OrderedFloat(pt_c[0] * orientation), c);
                         }
-                        Ordering::Equal => {
-                            partial_hull.insert(OrderedFloat(pt_c[0] * orientation), c);
-                        }
-                        Ordering::Greater => continue,
+                        _ => continue,
                     }
                 }
             }

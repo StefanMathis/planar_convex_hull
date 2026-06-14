@@ -105,3 +105,9 @@ point set.
 J. Zhejiang Univ. - Sci. A 8, 1210–1217 (2007). <https://doi.org/10.1631/jzus.2007.A1210>
 2. Saad, Omar: A Convex Hull Algorithm and its implementation in O(n log h)
 (2017). <https://www.codeproject.com/Articles/1210225/Fast-and-improved-D-Convex-Hull-algorithm-and-its>
+
+**Note**: As of June 2026, \[2\] is unfortunately offline, but can still be
+reached using the fantastic Wayback machine:
+<https://web.archive.org/web/20250818231303/https://www.codeproject.com/Articles/1210225/Fast-and-improved-D-Convex-Hull-algorithm-and-its>
+A full copy of the website fetched from the Wayback machine is stored in the
+repo (docs/convex_hull_algorithm.html).

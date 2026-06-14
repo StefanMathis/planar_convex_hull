@@ -5,16 +5,16 @@ planar_convex_hull
 docs/main.md and (if available docs/end.md). Do not modify this file, instead
 modify the components. -->
 
-[`ConvexHull`]: https://docs.rs/planar_convex_hull/0.2.1/planar_convex_hull/trait.ConvexHull.html
-[`convex_hull`]: https://docs.rs/planar_convex_hull/0.2.1/planar_convex_hull/trait.ConvexHull.html#method.convex_hull
-[`Index`]: https://docs.rs/planar_convex_hull/0.2.1/planar_convex_hull/struct.Index.html
+[`ConvexHull`]: https://docs.rs/planar_convex_hull/0.2.2/planar_convex_hull/trait.ConvexHull.html
+[`convex_hull`]: https://docs.rs/planar_convex_hull/0.2.2/planar_convex_hull/trait.ConvexHull.html#method.convex_hull
+[`Index`]: https://docs.rs/planar_convex_hull/0.2.2/planar_convex_hull/struct.Index.html
 
 [![Documentation](https://docs.rs/planar_convex_hull/badge.svg)](https://docs.rs/planar_convex_hull)
 
 A lightweight library providing a trait for implementing convex hull algorithm
 on your own datatype.
 
-The full API documentation is available at https://docs.rs/planar_convex_hull/0.2.1/planar_convex_hull.
+The full API documentation is available at https://docs.rs/planar_convex_hull/0.2.2/planar_convex_hull.
 
 > **Feedback welcome!**  
 > Found a bug, missing docs, or have a feature request?  
@@ -123,3 +123,9 @@ point set.
 J. Zhejiang Univ. - Sci. A 8, 1210–1217 (2007). <https://doi.org/10.1631/jzus.2007.A1210>
 2. Saad, Omar: A Convex Hull Algorithm and its implementation in O(n log h)
 (2017). <https://www.codeproject.com/Articles/1210225/Fast-and-improved-D-Convex-Hull-algorithm-and-its>
+
+**Note**: As of June 2026, \[2\] is unfortunately offline, but can still be
+reached using the fantastic Wayback machine:
+<https://web.archive.org/web/20250818231303/https://www.codeproject.com/Articles/1210225/Fast-and-improved-D-Convex-Hull-algorithm-and-its>
+A full copy of the website fetched from the Wayback machine is stored in the
+repo (docs/convex_hull_algorithm.html).
