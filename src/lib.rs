@@ -1,10 +1,9 @@
 /*!
 [`ConvexHull`]: crate::ConvexHull
 [`convex_hull`]: crate::ConvexHull::convex_hull
-[`Index`]: crate::Index
 
-A lightweight library providing a trait for implementing convex hull algorithm
-on your own datatype.
+A lightweight library providing a trait for implementing a divide-and-conquer
+planar convex hull algorithm for your own datatype.
 
  */
 #![doc = include_str!("../docs/main.md")]
@@ -12,7 +11,7 @@ on your own datatype.
 
 use ordered_float::OrderedFloat;
 use std::cmp::Ordering;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, btree_map::IntoIter};
 use std::f64::INFINITY;
 use std::f64::NEG_INFINITY;
 use std::ops::Bound::Excluded;
@@ -26,51 +25,107 @@ pub mod convex_hull_impl;
 /**
 A trait for implementing a planar convex hull algorithm for a collection type.
 
-This trait is meant to be implemented on a collection (e.g. a vector, slice, hashmap, ...) which
-stores instances of a type representing a 2-dimensional point in cartesian coordinates. The collection also
-needs to allow accessing this data via an `usize` index (so. e.g. a hashset is not suitable).
-The type needs to implement `Clone` and `Into<[f64; 2]>`; the first array element is treated as the x-coordinate
-and the second element is treated as the y-coordinate.
+This trait is meant to be implemented on a collection (e.g. a vector, slice,
+hashmap, ...) which stores instances of a type representing a 2-dimensional
+point in cartesian coordinates. The type needs to implement `Clone` and
+`Into<[f64; 2]>`; the first array element is treated as the x-coordinate and the
+second element is treated as the y-coordinate.
 
-Implementing the trait provides the [`ConvexHull::convex_hull`] method which returns a vector of indices describing
-the convex hull of a point set. To do so, the methods [`ConvexHull::convex_hull_get`] (for random data access)
-and [`ConvexHull::convex_hull_iter`] (for iterating through the points and the corresponding indices) need to
-be implemented.
+Implementing the trait requires the [`ConvexHull::convex_hull_iter`] method,
+which returns an iterator over the collection's keys and the associated points.
+In return, the trait provides the [`ConvexHull::convex_hull`] method which
+creates a [`ConvexHullIter`] iterator over the convex hull points and keys.
 
-The [README / module documentation](crate) shows an example
-how to implement these two methods for a custom data collection.
+See the docstring of [`ConvexHull::convex_hull_iter`] and the
+[README / module documentation](crate) for implementation examples.
+
+# Examples
+
+```
+use planar_convex_hull::ConvexHull;
+
+struct MySlice<'a>(&'a[[f64; 2]]);
+
+impl<'a> ConvexHull for MySlice<'a> {
+    fn convex_hull_iter(&self) -> impl Iterator<Item = (usize, [f64; 2])> {
+        return self.0.iter().cloned().map(Into::into).enumerate();
+    }
+}
+
+// Rhombus with two points in its middle
+let my_slice = MySlice(&[
+    [10.0, 4.0],
+    [-10.0, 4.0],
+    [0.0, 6.0],
+    [0.0, 2.0],
+    [4.0, 4.0], // Not part of the convex hull
+    [-4.0, 4.0], // Not part of the convex hull
+]);
+
+// The convex hull is the rhombus formed by the points 0, 1, 2 and 3. The
+// points 4 and 5 are not part of the convex hull, because they are located
+// on the line between points 0 and 1.
+let mut hull = my_slice.convex_hull();
+assert_eq!(hull.next(), Some((0, [10.0, 4.0])));
+assert_eq!(hull.next(), Some((2, [0.0, 6.0])));
+assert_eq!(hull.next(), Some((1, [-10.0, 4.0])));
+assert_eq!(hull.next(), Some((3, [0.0, 2.0])));
+assert_eq!(hull.next(), None);
+```
  */
 pub trait ConvexHull: std::marker::Sync {
     /**
-    Returns a point using the given index.
+    Iterates over all keys of a collection and the associated points in any
+    order.
 
-    As described in its docstring, instances of [`Index`] are created within [`ConvexHull::convex_hull`]
-    and cannot be created manually. The underlying `usize` index can be read out via `usize::from`.
-    As long as [`ConvexHull::convex_hull_iter`] is implemented correctly, it can be assumed that
-    the underlying `usize` is always valid for the collection. This allows access optimization:
+    The following examples show how this function is implemented for different
+    collection types (see source code of the [`convex_hull_impl`] module).
 
-    ```ignore
-    impl<P: Into<[f64; 2]> Clone + std::marker::Sync> ConvexHull for Vec<P> {
-        fn convex_hull_get(&self, key: Index) -> [f64; 2] {
-            // SAFETY: Index is only generated within the convex_hull method out of indices
-            // returned by convex_hull_iter (which are known to be valid)
-            return unsafe { self.get_unchecked(usize::from(key)) }
-                .clone()
-                .into();
-        }
-    }
-    ```
-     */
-    fn convex_hull_get(&self, key: Index) -> [f64; 2];
+    # Vector
 
-    /**
-    Iterates over all indices of a collection and the associated points in any order.
+    The "keys" of a [`Vec`] are the element indices.
 
-    The following example shows how this function is implemented for the `Vec` type:
     ```ignore
     impl<P: Into<[f64; 2]> + std::marker::Sync + Clone> ConvexHull for Vec<P> {
         fn convex_hull_iter(&self) -> impl Iterator<Item = (usize, [f64; 2])> {
             return self.iter().cloned().map(Into::into).enumerate();
+        }
+    }
+    ```
+
+    # HashMap
+
+    The "keys" of a [`HashMap`](std::collections::HashMap) are the keys of the
+    map.
+
+    ```ignore
+    impl<S: BuildHasher + std::marker::Sync, P: Into<[f64; 2]> + std::marker::Sync + Clone> ConvexHull
+        for HashMap<usize, P, S>
+    {
+        fn convex_hull_iter(&self) -> impl Iterator<Item = (usize, [f64; 2])> {
+            return self
+                .iter()
+                .map(|(key, val)| (key.clone(), val.clone().into()));
+        }
+    }
+    ```
+
+    # HashSet
+
+    The "keys" of a [`HashSet`](std::collections::HashSet) is the enumeration of
+    the set elements. This implementation relies on the fact that the iteration
+    order of a [`HashSet`](std::collections::HashSet) is stable and
+    deterministic.
+
+    ```ignore
+    impl<S: BuildHasher + std::marker::Sync, P: Into<[f64; 2]> + std::marker::Sync + Clone> ConvexHull
+        for HashSet<P, S>
+    {
+        fn convex_hull_iter(&self) -> impl Iterator<Item = (usize, [f64; 2])> {
+            return self
+                .iter()
+                .enumerate()
+                .map(|(i, val)| (i, val.clone().into()));
         }
     }
     ```
@@ -80,32 +135,39 @@ pub trait ConvexHull: std::marker::Sync {
     // ==================================================================================
 
     /**
-    Calculates the convex hull for the given collection
+    Calculates the convex hull for `self` and returns a [`ConvexHullIter`] which
+    can be used to iterate through the convex hull points and their
+    corresponding keys.
 
-    This function calculates the convex hull of a set of points using the divide-and-conquer algorithm presented in \[1, 2\].
-    If the input contains duplicate points which are part of the convex hull, one of the points is selected arbitrarily.
-    Nonreal points (points containing NaN or infinite values) are ignored.
+    This function calculates the convex hull of a set of points using the
+    divide-and-conquer algorithm presented in \[1, 2\]. If the input contains
+    duplicate points which are part of the convex hull, one of the points is
+    selected arbitrarily. Nonreal points (points containing NaN or infinite
+    values) are ignored.
 
-    The returned vector `Vec<Index>` contains the convex hull indices in counter-clockwise order. The underlying points
-    can be accessed using the [`ConvexHull::convex_hull_get`] method, the inderlying `usize` indices can be retrieved via [`reinterpret`].
-    The convex hull is defined by connecting neighboring points as defined by the indices
-    (including the last and the first index) by straight lines.
+    The produced [`ConvexHullIter`] returns `(key, point)` pairs representing
+    the corners of the convex hull in counter-clockwise (mathematically
+    positive) order. Connecting the points with straight lines forms the convex
+    hull.
 
-    In addition to the original algorithm descriptions, this implementation also covers edge cases such as all points being located on a
-    single line or multiple hull points having the same x- or y- coordinate (see examples below).
+    In addition to the original algorithm descriptions, this implementation also
+    covers edge cases such as all points being located on a single line or
+    multiple hull points having the same x- or y-coordinate (see examples
+    below).
 
-    When the  `rayon ` feature is enabled, the divide-and-conquer part of the algorithm is parallelized.
+    When the `rayon` feature is enabled, the divide-and-conquer part of the
+    algorithm is parallelized.
 
     # Literature
 
     1. Liu, Gh., Chen, Cb: A new algorithm for computing the convex hull of a planar point set.
     J. Zhejiang Univ. - Sci. A 8, 1210–1217 (2007). [https://doi.org/10.1631/jzus.2007.A1210](https://doi.org/10.1631/jzus.2007.A1210)
     2. Saad, Omar: A Convex Hull Algorithm and its implementation in O(n log h) (2017).
-    [https://www.codeproject.com/Articles/1210225/Fast-and-improved-D-Convex-Hull-algorithm-and-its](https://www.codeproject.com/Articles/1210225/Fast-and-improved-D-Convex-Hull-algorithm-and-its)
+    See docs/convex_hull_algorithm.html.
 
     # Examples
     ```
-    use planar_convex_hull::{ConvexHull, reinterpret};
+    use planar_convex_hull::ConvexHull;
 
     // Rhombus with two points in its middle
     let slice = &[
@@ -117,34 +179,46 @@ pub trait ConvexHull: std::marker::Sync {
         [-4.0, 4.0], // Not part of the convex hull
     ];
 
-    // Returns a `Vec<Index>`. This vector can now be used to access the points via `convex_hull_get`:
-    let hull_i = slice.convex_hull();
-    let pts: Vec<[f64; 2]> = hull_i.iter().map(|i| slice.convex_hull_get(*i)).collect();
-    assert_eq!(pts, vec![[10.0, 4.0], [0.0, 6.0], [-10.0, 4.0], [0.0, 2.0]]);
+    // The convex hull is the rhombus formed by the points 0, 1, 2 and 3. The
+    // points 4 and 5 are not part of the convex hull, because they are located
+    // on the line between points 0 and 1.
+    let mut hull = slice.convex_hull();
+    assert_eq!(hull.next(), Some((0, [10.0, 4.0])));
+    assert_eq!(hull.next(), Some((2, [0.0, 6.0])));
+    assert_eq!(hull.next(), Some((1, [-10.0, 4.0])));
+    assert_eq!(hull.next(), Some((3, [0.0, 2.0])));
+    assert_eq!(hull.next(), None);
 
-    // Now we want to use the raw usize indices for something else
-    let hull = reinterpret(slice.convex_hull());
-    assert_eq!(hull, vec![0, 2, 1, 3]);
-
-    // All points on a single line with the same y-value everywhere. The points 2 and 3 in the middle of the line show up twice, because the convex hull goes "up and down" the x-axis
+    // All points on a single line with the same y-value everywhere. The points
+    // 2 and 3 in the middle of the line show up twice, because the convex hull
+    // goes "up and down" the x-axis
     let slice = &[
         [10.0, -2.0],
         [-10.0, -2.0],
         [0.0, -2.0],
         [3.0, -2.0],
     ];
-    let hull = reinterpret(slice.convex_hull());
-    assert_eq!(hull, vec![0, 3, 2, 1, 2, 3]);
+    let mut hull = slice.convex_hull();
+    assert_eq!(hull.next(), Some((0, [10.0, -2.0])));
+    assert_eq!(hull.next(), Some((3, [3.0, -2.0])));
+    assert_eq!(hull.next(), Some((2, [0.0, -2.0])));
+    assert_eq!(hull.next(), Some((1, [-10.0, -2.0])));
+    assert_eq!(hull.next(), Some((2, [0.0, -2.0])));
+    assert_eq!(hull.next(), Some((3, [3.0, -2.0])));
+    assert_eq!(hull.next(), None);
 
-    // Triangle with a point on the diagonal
+    // Triangle with a collinear point on the hull edge
     let slice = &[
         [1.0, 0.0],
         [0.0, 1.0],
         [0.0, 0.0],
-        [0.5, 0.5], // Part of the convex hull
+        [0.5, 0.5], // Collinear point on hull edge
     ];
-    let hull = reinterpret(slice.convex_hull());
-    assert_eq!(hull, vec![0, 3, 1, 2]);
+    let mut hull = slice.convex_hull();
+    assert_eq!(hull.next(), Some((0, [1.0, 0.0])));
+    assert_eq!(hull.next(), Some((1, [0.0, 1.0])));
+    assert_eq!(hull.next(), Some((2, [0.0, 0.0])));
+    assert_eq!(hull.next(), None);
 
     // Triangle with a point in the middle
     let slice = &[
@@ -153,13 +227,25 @@ pub trait ConvexHull: std::marker::Sync {
         [0.0, 0.0],
         [0.25, 0.25], // Not part of the convex hull
     ];
-    let hull = reinterpret(slice.convex_hull());
-    assert_eq!(hull, vec![0, 1, 2]);
+    let mut hull = slice.convex_hull();
+    assert_eq!(hull.next(), Some((0, [1.0, 0.0])));
+    assert_eq!(hull.next(), Some((1, [0.0, 1.0])));
+    assert_eq!(hull.next(), Some((2, [0.0, 0.0])));
+    assert_eq!(hull.next(), None);
     ```
      */
-    fn convex_hull(&self) -> Vec<Index> {
-        // Step 1: Identify the four point-pairs defining each quadrant. A quadrant is
-        // defined by the x-value of one point and the y-value of the other point.
+    fn convex_hull(&self) -> ConvexHullIter {
+        /*
+        Step 1: Identify the four point-pairs defining each quadrant.
+
+        We search for the points containing one extremum x- or y-value. The
+        quadrant borders are defined by the other value of the point. For
+        example, if the point with the largest x-value is [2, 1] and that with
+        the largest y-value is [1, 3], all points where x >= 1 and y >= 1 belong
+        to the q1 quadrant. Similarily, the q2 quadrant is defined by x <= 1 and
+        y >= 1, the q3 quadrant by x <= 1 and y <= 3, and the q4 quadrant by
+        x >= 1 and y <= 3.
+         */
         let mut q1x: usize = usize::MAX;
         let mut q1y: usize = usize::MAX;
         let mut q2x: usize = usize::MAX;
@@ -177,18 +263,15 @@ pub trait ConvexHull: std::marker::Sync {
         let mut q4x_pt: [f64; 2] = [NEG_INFINITY, INFINITY];
         let mut q4y_pt: [f64; 2] = [NEG_INFINITY, INFINITY];
 
+        // This variable is used to catch the special case of a collection
+        // having only one real point.
         let mut num_real_points = 0;
 
         for (idx, point) in self.convex_hull_iter() {
             // Skip any non-real points
-            if point[0].is_infinite()
-                || point[1].is_infinite()
-                || point[0].is_nan()
-                || point[1].is_nan()
-            {
+            if !point[0].is_finite() || !point[1].is_finite() {
                 continue;
             }
-
             num_real_points += 1;
 
             // q1x
@@ -318,9 +401,9 @@ pub trait ConvexHull: std::marker::Sync {
                         q4y = idx;
                     }
                     Ordering::Equal => {
-                        if point[0] > q4x_pt[0] {
-                            q4x_pt = point.clone();
-                            q4x = idx;
+                        if point[0] > q4y_pt[0] {
+                            q4y_pt = point.clone();
+                            q4y = idx;
                         }
                     }
                     Ordering::Less => (),
@@ -330,41 +413,53 @@ pub trait ConvexHull: std::marker::Sync {
 
         // Cover the special case of a collection having only one point
         if num_real_points == 1 {
-            return vec![Index(q1x)];
+            let mut q1 = BTreeMap::new();
+            q1.insert(OrderedFloat(0.0), (q1x, q1x_pt));
+
+            let q2 = BTreeMap::new();
+            let q3 = BTreeMap::new();
+            let q4 = BTreeMap::new();
+            return ConvexHullIter::new([q1, q2, q3, q4]);
         }
 
-        // Step 2: Construct the convex hull in each quadrant. Filter all points which
-        // are not in the initial point set
-        let mut partial_hull_q1: BTreeMap<OrderedFloat<f64>, usize> = BTreeMap::new();
+        // Step 2: Insert the found extremum points into the quadrant hulls. If
+        // a quadrant has less than two points, it is considered degenerate and
+        // will be ignored in the next step.
+        //
+        // The hulls are represented by BTreeMaps, where the key is the x-value
+        // of the point and the value is a tuple containing the index and the
+        // point itself. The BTreeMap is used to keep the points sorted by their
+        // x-values, which is necessary for the next step of the algorithm.
+        let mut partial_hull_q1: BTreeMap<OrderedFloat<f64>, (usize, [f64; 2])> = BTreeMap::new();
         if q1x != usize::MAX {
-            partial_hull_q1.insert(OrderedFloat(-q1x_pt[0]), q1x);
+            partial_hull_q1.insert(OrderedFloat(-q1x_pt[0]), (q1x, q1x_pt));
         }
         if q1y != usize::MAX {
-            partial_hull_q1.insert(OrderedFloat(-q1y_pt[0]), q1y);
+            partial_hull_q1.insert(OrderedFloat(-q1y_pt[0]), (q1y, q1y_pt));
         }
 
-        let mut partial_hull_q2: BTreeMap<OrderedFloat<f64>, usize> = BTreeMap::new();
+        let mut partial_hull_q2: BTreeMap<OrderedFloat<f64>, (usize, [f64; 2])> = BTreeMap::new();
         if q2x != usize::MAX {
-            partial_hull_q2.insert(OrderedFloat(-q2x_pt[0]), q2x);
+            partial_hull_q2.insert(OrderedFloat(-q2x_pt[0]), (q2x, q2x_pt));
         }
         if q2y != usize::MAX {
-            partial_hull_q2.insert(OrderedFloat(-q2y_pt[0]), q2y);
+            partial_hull_q2.insert(OrderedFloat(-q2y_pt[0]), (q2y, q2y_pt));
         }
 
-        let mut partial_hull_q3: BTreeMap<OrderedFloat<f64>, usize> = BTreeMap::new();
+        let mut partial_hull_q3: BTreeMap<OrderedFloat<f64>, (usize, [f64; 2])> = BTreeMap::new();
         if q3x != usize::MAX {
-            partial_hull_q3.insert(OrderedFloat(q3x_pt[0]), q3x);
+            partial_hull_q3.insert(OrderedFloat(q3x_pt[0]), (q3x, q3x_pt));
         }
         if q3y != usize::MAX {
-            partial_hull_q3.insert(OrderedFloat(q3y_pt[0]), q3y);
+            partial_hull_q3.insert(OrderedFloat(q3y_pt[0]), (q3y, q3y_pt));
         }
 
-        let mut partial_hull_q4: BTreeMap<OrderedFloat<f64>, usize> = BTreeMap::new();
+        let mut partial_hull_q4: BTreeMap<OrderedFloat<f64>, (usize, [f64; 2])> = BTreeMap::new();
         if q4x != usize::MAX {
-            partial_hull_q4.insert(OrderedFloat(q4x_pt[0]), q4x);
+            partial_hull_q4.insert(OrderedFloat(q4x_pt[0]), (q4x, q4x_pt));
         }
         if q4y != usize::MAX {
-            partial_hull_q4.insert(OrderedFloat(q4y_pt[0]), q4y);
+            partial_hull_q4.insert(OrderedFloat(q4y_pt[0]), (q4y, q4y_pt));
         }
 
         let mut partial_hulls = [
@@ -385,7 +480,7 @@ pub trait ConvexHull: std::marker::Sync {
 
         fn loop_body<T: ConvexHull + ?Sized>(
             this: &T,
-            partial_hull: &mut BTreeMap<OrderedFloat<f64>, usize>,
+            partial_hull: &mut BTreeMap<OrderedFloat<f64>, (usize, [f64; 2])>,
             quadrant: usize,
             is_degenerate: bool,
             end_points: [usize; 8],
@@ -394,17 +489,18 @@ pub trait ConvexHull: std::marker::Sync {
             q3y_pt: [f64; 2],
             q4x_pt: [f64; 2],
         ) {
-            // In q1 and q2, the search for new convex hull points starts with the largest
-            // x-value and stops with the smallest x-value of the quadrant.
-            // In q3 and q4, the search starts with the smallest x-value and ends with the
-            // largest. To use the same code inside the loop, the signs of the
-            // x-values in q1 and q2 are flipped.
+            // In q1 and q2, the search for new convex hull points starts with
+            // the largest x-value and stops with the smallest x-value of the
+            // quadrant (counter-clockwise search along the point set). In q3
+            // and q4, the search starts with the smallest x-value and ends with
+            // the largest. To use the same code inside the loop, the signs of
+            // the x-values in q1 and q2 are flipped. The orientation variable
+            // is used to flip the signs of the x-values in q1 and q2.
             let orientation = 1.0 - (2.0 * (quadrant < 2) as i32 as f64);
 
             for (c, pt_c) in this.convex_hull_iter() {
-                // Skip any non-real points
-                // Inverting "is_finite" also catches NaN (is_infinite only catches infinite
-                // values, not NaN)
+                // Skip any non-real points. Inverting "is_finite" also catches
+                // NaN (is_infinite only catches infinite values, not NaN).
                 if !pt_c[0].is_finite() || !pt_c[1].is_finite() {
                     continue;
                 }
@@ -418,7 +514,7 @@ pub trait ConvexHull: std::marker::Sync {
 
                         // Quadrant 1 -> 2
                         if q1y_pt[1] == pt_c[1] {
-                            partial_hull.insert(OrderedFloat(pt_c[0] * orientation), c);
+                            partial_hull.insert(OrderedFloat(pt_c[0] * orientation), (c, pt_c));
                             continue;
                         }
                     }
@@ -432,7 +528,7 @@ pub trait ConvexHull: std::marker::Sync {
                         if q2x_pt[0] == pt_c[0] {
                             partial_hull.insert(
                                 OrderedFloat((pt_c[0] + pt_c[1] - q2x_pt[1]) * orientation),
-                                c,
+                                (c, pt_c),
                             );
                             continue;
                         }
@@ -445,7 +541,7 @@ pub trait ConvexHull: std::marker::Sync {
 
                         // Quadrant 3 -> 4
                         if q3y_pt[1] == pt_c[1] {
-                            partial_hull.insert(OrderedFloat(pt_c[0] * orientation), c);
+                            partial_hull.insert(OrderedFloat(pt_c[0] * orientation), (c, pt_c));
                             continue;
                         }
                     }
@@ -459,7 +555,7 @@ pub trait ConvexHull: std::marker::Sync {
                         if q4x_pt[0] == pt_c[0] {
                             partial_hull.insert(
                                 OrderedFloat((pt_c[0] + pt_c[1] - q4x_pt[1]) * orientation),
-                                c,
+                                (c, pt_c),
                             );
                             continue;
                         }
@@ -467,42 +563,53 @@ pub trait ConvexHull: std::marker::Sync {
                     _ => unreachable!(),
                 }
 
-                // Exclude all degenerate partial hulls. A partial hull is one which only has
-                // one entry.
+                // Exclude all degenerate partial hulls. A partial hull is one
+                // which only has one entry.
                 if is_degenerate {
                     continue;
                 }
 
                 let x = OrderedFloat(orientation * pt_c[0]);
 
-                // Find the two points inside the current partial hull whose x-values form the
-                // closest bracket around the x-value of pt_c. If one of the
-                // range methods yields an empty iterator, pt_c is not inside the current
-                // quadrant and can therefore be skipped.
-                let a = match partial_hull.range((Unbounded, Excluded(x))).last() {
-                    Some(lower_clamp) => *lower_clamp.1,
-                    None => continue,
-                };
-                let b = match partial_hull.range((Excluded(x), Unbounded)).next() {
-                    Some(upper_clamp) => *upper_clamp.1,
-                    None => continue,
-                };
-
                 /*
-                SAFETY: Since any of the indices in the partial hull is a valid
-                index for the input vector, this operation is never out of bounds.
+                Find the two points inside the current partial hull whose
+                x-values form the closest bracket around the x-value of pt_c,
+                using the fact that the BTreeMap is sorted by x-value. The two
+                points are called A and B. If C is located to the right of the
+                line AB, C is part of the convex hull and possibly invalidates
+                A and/or B as well as neighboring points of A and B. If C is
+                located to the left of the line AB or directly on it, C is not
+                part of the convex hull and can be discarded. The cross product
+                of the vectors AB and AC is used to determine the relative
+                position of C to the line AB. The cross product is positive if C
+                is to the left of AB, negative if C is to the right, and zero if
+                C is on the line AB. The cross product is calculated as follows:
+                cross_prod_abc = (B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x)
                  */
-                let mut pt_a = this.convex_hull_get(Index(a));
-                let mut pt_b = this.convex_hull_get(Index(b));
+                let mut pt_a = match partial_hull.range((Unbounded, Excluded(x))).last() {
+                    Some(lower_clamp) => lower_clamp.1.1,
+                    None => continue,
+                };
+                let mut pt_b = match partial_hull.range((Excluded(x), Unbounded)).next() {
+                    Some(upper_clamp) => upper_clamp.1.1,
+                    None => continue,
+                };
 
                 /*
-                Calculate the cross product which tells us whether C is on the left of the line AB, directly on the line or right of it:
-                If (cross_prod > 0) then C is to the left => C can be discarded
-                If (cross_prod = 0) then C is on the line => C is part of the convex hull but does not invalidate any of the previous convex hull points
-                If (cross_prod < 0) then C is to the right => C is part of the convex hull and possibly invalidates A and/or B as well as neighboring points of A and B
+                Calculate the cross product which tells us whether C is on the
+                left of the line AB, directly on the line or right of it:
+                If (cross_prod > 0) then C is to the left => C can be discarded.
+                If (cross_prod = 0) then C is on the line => C is collinear
+                to A and B and can be discarded.
+                If (cross_prod < 0) then C is to the right => C is part of the
+                convex hull and possibly invalidates A and/or B as well as
+                neighboring points of A and B.
 
-                The last step is done by repeatedly reading the left / right neighbor of A / B (called D) from here on. If A / B is located on the left of DC / CD,
-                A / B is discarded and D is assigned as the next A / B. If A / B has no neighbors or if A / B is not located on the left of DC / CD, the main loop continues.
+                The last step is done by repeatedly reading the left / right
+                neighbor of A / B (called D) from here on. If A / B is located
+                on the left of DC / CD, A / B is discarded and D is assigned as
+                the next A / B. If A / B has no neighbors or if A / B is not
+                located on the left of DC / CD, the main loop continues.
                  */
                 let cross_prod_abc = (pt_b[0] - pt_a[0]) * (pt_c[1] - pt_a[1])
                     - (pt_b[1] - pt_a[1]) * (pt_c[0] - pt_a[0]);
@@ -510,9 +617,9 @@ pub trait ConvexHull: std::marker::Sync {
                 if let Some(ordering) = cross_prod_abc.partial_cmp(&0.0) {
                     match ordering {
                         Ordering::Less => {
-                            // Check all neighbors on the left of A
+                            // Check all neighbors on the left of A: [-INF, A)
                             loop {
-                                let d = match partial_hull
+                                let (_, pt_d) = match partial_hull
                                     .range((
                                         Unbounded,
                                         Excluded(OrderedFloat(pt_a[0] * orientation)),
@@ -522,7 +629,6 @@ pub trait ConvexHull: std::marker::Sync {
                                     Some(val) => *val.1,
                                     None => break, // A has no neighbor in search direction
                                 };
-                                let pt_d = this.convex_hull_get(Index(d));
 
                                 // Line DC with A
                                 let cross_prod = (pt_c[0] - pt_d[0]) * (pt_a[1] - pt_d[1])
@@ -532,8 +638,8 @@ pub trait ConvexHull: std::marker::Sync {
                                 if cross_prod >= 0.0 {
                                     partial_hull.remove(&OrderedFloat(pt_a[0] * orientation));
 
-                                    // Replace A with D
-                                    pt_a = this.convex_hull_get(Index(d));
+                                    // Replace A with D.
+                                    pt_a = pt_d;
                                 } else {
                                     break;
                                 }
@@ -541,7 +647,7 @@ pub trait ConvexHull: std::marker::Sync {
 
                             // Check all neighbors on the right of B
                             loop {
-                                let d = match partial_hull
+                                let (_, pt_d) = match partial_hull
                                     .range((
                                         Excluded(OrderedFloat(pt_b[0] * orientation)),
                                         Unbounded,
@@ -551,7 +657,6 @@ pub trait ConvexHull: std::marker::Sync {
                                     Some(val) => *val.1,
                                     None => break, // B has no neighbor in search direction
                                 };
-                                let pt_d = this.convex_hull_get(Index(d));
 
                                 // Line CD with B
                                 let cross_prod = (pt_d[0] - pt_c[0]) * (pt_b[1] - pt_c[1])
@@ -562,14 +667,14 @@ pub trait ConvexHull: std::marker::Sync {
                                     partial_hull.remove(&OrderedFloat(pt_b[0] * orientation));
 
                                     // Replace B with D
-                                    pt_b = this.convex_hull_get(Index(d));
+                                    pt_b = pt_d;
                                 } else {
                                     break;
                                 }
                             }
 
                             // Add C to the partial hull
-                            partial_hull.insert(OrderedFloat(pt_c[0] * orientation), c);
+                            partial_hull.insert(OrderedFloat(pt_c[0] * orientation), (c, pt_c));
                         }
                         _ => continue,
                     }
@@ -621,137 +726,69 @@ pub trait ConvexHull: std::marker::Sync {
                 });
         }
 
-        // Step 3: Combine the hulls
-        let mut resulting_hull: Vec<Index> = Vec::new();
+        // Step 3: Combine the hulls inside an iterator which goes over the four
+        // quadrants in counter-clockwise order. The iterator also filters out
+        // duplicate points at the boundaries of the quadrants.
+        return ConvexHullIter::new(partial_hulls);
+    }
+}
 
-        for mut partial_hull in partial_hulls.into_iter() {
-            // Check if the first value of the new partial hull equals the current last
-            // value of the assembled hull. If so, it is discarded
-            if let Some(last) = resulting_hull.last() {
-                if let Some(first) = partial_hull.pop_first() {
-                    if first.1 != usize::from(last.clone()) {
-                        resulting_hull.push(Index(first.1));
-                    }
+/**
+An owning iterator over the convex hull points and their corresponding keys.
+
+This `struct` is created by [`ConvexHull::convex_hull`]. See its documentation
+for more.
+ */
+#[derive(Debug)]
+pub struct ConvexHullIter {
+    quadrant_iterators: [IntoIter<OrderedFloat<f64>, (usize, [f64; 2])>; 4],
+    hull_idx: usize,
+    first_returned_idx: Option<usize>,
+    last_returned_idx: Option<usize>,
+}
+
+impl ConvexHullIter {
+    fn new(quadrants: [BTreeMap<OrderedFloat<f64>, (usize, [f64; 2])>; 4]) -> Self {
+        let quadrant_iterators = quadrants.map(|q| q.into_iter());
+
+        return Self {
+            quadrant_iterators,
+            hull_idx: 0,
+            first_returned_idx: None,
+            last_returned_idx: None,
+        };
+    }
+}
+
+impl Iterator for ConvexHullIter {
+    type Item = (usize, [f64; 2]);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.hull_idx >= 4 {
+            return None;
+        }
+
+        let current_hull = &mut self.quadrant_iterators[self.hull_idx];
+        match current_hull.next() {
+            Some(item) => {
+                // This check prevents that points are returned twice at the
+                // boundary of two hull iterators.
+                let idx = Some(item.1.0);
+                if idx == self.last_returned_idx || idx == self.first_returned_idx {
+                    return self.next();
                 }
-            }
+                self.last_returned_idx = idx;
 
-            for (_, idx) in partial_hull.iter() {
-                resulting_hull.push(Index(*idx));
+                if self.first_returned_idx.is_none() {
+                    self.first_returned_idx = idx;
+                }
+
+                return Some(item.1);
+            }
+            None => {
+                self.hull_idx += 1;
+                return self.next();
             }
         }
-
-        // If the last value of partial_hull equals the first one, discard it
-        while resulting_hull.last() == resulting_hull.first() {
-            if let None = resulting_hull.pop() {
-                break;
-            }
-        }
-
-        return resulting_hull;
     }
-}
-
-/**
-An index known to be valid.
-
-This index is generated within the [`ConvexHull::convex_hull`] method from the indices provided
-by the [`ConvexHull::convex_hull_iter`] and is therefore known to be valid.
-This allows to optimize the [`ConvexHull::convex_hull_get`] method
-(e.g. the implementation for `Vec<P: Into<[f64;2]>`
-uses [`get_unchecked`](https://doc.rust-lang.org/std/vec/struct.Vec.html#method.get_unchecked)).
-
-There is no way to create this struct outside this crate in order to prevent the accidental
-use of invalid indices in [`ConvexHull::convex_hull_get`]. However, `usize`
-implements `From<Index> for usize` to make the underlying `usize` value accessible inside
-custom implementations of the [`ConvexHull::convex_hull_get`] method.
-*/
-#[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Index(usize);
-
-impl From<Index> for usize {
-    fn from(value: Index) -> Self {
-        return value.0;
-    }
-}
-
-/**
-Reinterprets a `Vec<Index>` as a `Vec<usize>`.
-
-Since [`Index`] is a [newtype](https://doc.rust-lang.org/rust-by-example/generics/new_types.html) of `usize`,
-it can be reinterpreted as a `Vec<usize>` without the need for allocations. This is useful if the output
-indices of [`ConvexHull::convex_hull`] should be used for other purposes than just accessing the points
-of the convex hull via [`ConvexHull::convex_hull_get`].
-
-# Examples
-
-```
-use planar_convex_hull::{ConvexHull, reinterpret};
-
-let vec: Vec<[f64; 2]> = vec![
-    [0.0, 0.0],
-    [1.0, 0.0],
-    [0.0, 1.0],
-    [1.0, 1.0],
-];
-
-// Returns a `Vec<Index>`. This vector can now be used to access the points via `convex_hull_get`:
-let hull = vec.convex_hull();
-let pts: Vec<[f64; 2]> = hull.iter().map(|i| vec.convex_hull_get(*i)).collect();
-assert_eq!(pts, vec![[1.0, 1.0], [0.0, 1.0], [0.0, 0.0], [1.0, 0.0]]);
-
-// Now we want to use the raw usize indices for something else
-let hull_usize = reinterpret(hull);
-assert_eq!(hull_usize, vec![3, 2, 0, 1]);
-```
- */
-pub fn reinterpret(index_vec: Vec<Index>) -> Vec<usize> {
-    // Safety:
-    // - Index is #[repr(transparent)] over usize
-    // - Vec<Index> and Vec<usize> have the same layout
-    // - Therefore, we can safely transmute the Vec
-    let ptr = index_vec.as_ptr() as *mut usize;
-    let len = index_vec.len();
-    let cap = index_vec.capacity();
-
-    // Prevent dropping the original Vec
-    std::mem::forget(index_vec);
-
-    // SAFETY: the above conditions are met
-    unsafe { Vec::from_raw_parts(ptr, len, cap) }
-}
-
-/**
-Like [`reinterpret`], but reinterprets a slice instead of a vector.
-
-# Examples
-
-```
-use planar_convex_hull::{ConvexHull, reinterpret_ref};
-
-let vec: Vec<[f64; 2]> = vec![
-    [0.0, 0.0],
-    [1.0, 0.0],
-    [0.0, 1.0],
-    [1.0, 1.0],
-];
-
-// Returns a `Vec<Index>`. This vector can now be used to access the points via `convex_hull_get`:
-let hull = vec.convex_hull();
-let pts: Vec<[f64; 2]> = hull.iter().map(|i| vec.convex_hull_get(*i)).collect();
-assert_eq!(pts, vec![[1.0, 1.0], [0.0, 1.0], [0.0, 0.0], [1.0, 0.0]]);
-
-// Now we want to use the raw usize indices for something else
-let hull_usize = reinterpret_ref(hull.as_slice());
-assert_eq!(hull_usize, &[3, 2, 0, 1]);
-```
- */
-pub fn reinterpret_ref(index_slice: &[Index]) -> &[usize] {
-    // SAFETY:
-    // - Index is #[repr(transparent)] over usize, so they have the same memory
-    //   layout
-    // - A slice is a fat pointer (ptr + len), and we are only changing the type
-    //   from Index to usize
-    // - Thus, reinterpretation is safe as long as Index contains only a usize
-    unsafe { std::slice::from_raw_parts(index_slice.as_ptr() as *const usize, index_slice.len()) }
 }

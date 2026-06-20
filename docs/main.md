@@ -4,36 +4,24 @@
 
 This library offers the [`ConvexHull`] trait which provides a divide-and-conquer
 convex hull algorithm in O(n log h) [1, 2] via the [`convex_hull`] method. The
-trait can be implemented easily for any collection type holding point-like types 
-which fulfills the following conditions:
+trait can be implemented easily for any collection type holding planar
+point-like types which fulfills the following conditions:
 - The point-like type implements `Into<[f64; 2]>`, `Sync` and `Clone`,
-- The elements of the collections can be randomly accessed via an `usize` index,
-- The elements and their indices can be iterated over.
+- The elements and their keys / indices can be iterated over.
 
-# Example implementation
+# Examples
 
 Let's assume we want to implement [`ConvexHull`] for a
 [`newtype`](https://doc.rust-lang.org/rust-by-example/generics/new_types.html)
 wrapper around a slice of `[f64; 2]`. All we need to do is to tell the trait how
-to randomly access the data and how to iterate over the collection:
+how to iterate over the collection elements and their keys / indices:
 
 ```rust
-use planar_convex_hull::{ConvexHull, Index, reinterpret, reinterpret_ref};
+use planar_convex_hull::ConvexHull;
 
 struct MySlice<'a>(&'a[[f64; 2]]);
 
 impl<'a> ConvexHull for MySlice<'a> {
-    /// Index is a newtype of usize and is used to make sure that only indices returned
-    /// by convex_hull_iter can be used for random data access. It can be converted into
-    /// usize via the corresponding `From` implementation.
-    fn convex_hull_get(&self, key: Index) -> [f64; 2] {
-        // SAFETY: Index is only generated within the convex_hull method out of indices
-        // returned by convex_hull_iter (which are known to be valid)
-        return unsafe { self.0.get_unchecked(usize::from(key)) }
-            .clone()
-            .into();
-    }
-
     fn convex_hull_iter(&self) -> impl Iterator<Item = (usize, [f64; 2])> {
         return self.0.iter().cloned().map(Into::into).enumerate();
     }
@@ -49,20 +37,61 @@ let my_slice = MySlice(&[
     [-4.0, 4.0], // Not part of the convex hull
 ]);
 
-// Returns a `Vec<Index>`. This vector can now be used to access the points via `convex_hull_get`:
-let hull = my_slice.convex_hull();
-let pts: Vec<[f64; 2]> = hull.iter().map(|i| my_slice.convex_hull_get(*i)).collect();
-assert_eq!(pts, vec![[10.0, 4.0], [0.0, 6.0], [-10.0, 4.0], [0.0, 2.0]]);
+// The convex hull is the rhombus formed by the points 0, 1, 2 and 3. The
+// points 4 and 5 are not part of the convex hull, because they are located
+// on the line between points 0 and 1.
+let mut hull = my_slice.convex_hull();
+assert_eq!(hull.next(), Some((0, [10.0, 4.0])));
+assert_eq!(hull.next(), Some((2, [0.0, 6.0])));
+assert_eq!(hull.next(), Some((1, [-10.0, 4.0])));
+assert_eq!(hull.next(), Some((3, [0.0, 2.0])));
+assert_eq!(hull.next(), None);
+```
 
-// Now we want to use the raw usize indices for something else. We can either reinterpret
-// a `&'a [Index]` as a `&'a [usize]` ...
-let hull_usize_slice = reinterpret_ref(hull.as_slice());
-assert_eq!(hull_usize_slice, &[0, 2, 1, 3]);
+The following example shows that even a collection type which has no concept of
+"keys" or "indices" can still be used, provided that it has a stable iteration
+order over its elements:
 
-// ... or convert the `Vec<Index>` into a `Vec<usize>`. Both operations do simply reinterpret
-// the bits, since `Index` is defined as a transparent newtype around usize.
-let hull_usize_vec = reinterpret(hull);
-assert_eq!(hull_usize_vec, vec![0, 2, 1, 3]);
+```rust
+use std::collections::HashSet;
+use ordered_float::OrderedFloat;
+use planar_convex_hull::ConvexHull;
+
+// Custom point type is needed because HashSet requires its elements to
+// implement Eq and ConvexHull requires the elements to implement Into<[f64; 2]>
+// (which [OrderedFloat<f64>; 2] does not do).
+#[derive(Clone, Hash, PartialEq, Eq)]
+struct MyPoint([OrderedFloat<f64>; 2]);
+
+impl From<MyPoint> for [f64; 2] {
+    fn from(value: MyPoint) -> Self {
+        return [value.0[0].into_inner(), value.0[1].into_inner()];
+    }
+}
+
+let data = &[
+    [-3.0, -1.0],
+    [-2.0, 2.0],
+    [0.0, 0.0],
+    [1.0, 3.0],
+    [5.0, -1.0],
+    [6.0, 2.0],
+    [7.0, -4.0],
+    [8.0, -1.0],
+];
+let hashset: HashSet<MyPoint> = HashSet::from_iter(
+    data.iter().map(|[x, y]| MyPoint([OrderedFloat(x.clone()), OrderedFloat(y.clone())]))
+);
+
+// Keys are meaningless, so we focus on the actual points
+let mut hull = hashset.convex_hull();
+assert_eq!(hull.next().map(|(_, p)| p), Some([8.0, -1.0]));
+assert_eq!(hull.next().map(|(_, p)| p), Some([6.0, 2.0]));
+assert_eq!(hull.next().map(|(_, p)| p), Some([1.0, 3.0]));
+assert_eq!(hull.next().map(|(_, p)| p), Some([-2.0, 2.0]));
+assert_eq!(hull.next().map(|(_, p)| p), Some([-3.0, -1.0]));
+assert_eq!(hull.next().map(|(_, p)| p), Some([7.0, -4.0]));
+assert_eq!(hull.next(), None);
 ```
 
 # Predefined implementations
@@ -70,20 +99,24 @@ assert_eq!(hull_usize_vec, vec![0, 2, 1, 3]);
 The `imp` module contains implementations of [`ConvexHull`] for the following
 collection types with `P: Into<[f64; 2]>`:
 * [`Vec<P>`](https://doc.rust-lang.org/std/vec/struct.Vec.html)
-* [`HashMap<usize, P>`](https://doc.rust-lang.org/std/collections/struct.HashMap.html)
+* [`HashMap<usize, P>`](https://doc.rust-lang.org/std/collections/struct.HashSet.html)
+* [`HashSet<P>`](https://doc.rust-lang.org/std/collections/struct.HashMap.html)
 * [`[P; N]`](https://doc.rust-lang.org/std/primitive.array.html) with `N` being
 the size of the array
 * [`&[P]`](https://doc.rust-lang.org/std/primitive.slice.html)
 * [`Slab<P>`](https://docs.rs/slab/latest/slab/struct.Slab.html) (only available
 with feature flag  `slab ` enabled)
 * [`AHashMap<usize, P>`](https://docs.rs/ahash/0.8.12/ahash/struct.AHashMap.html)
-(only available with feature flag  `ahash ` enabled)
+(only available with feature flag ahash` enabled)
+* [`AHashSet<P>`](https://docs.rs/ahash/0.8.12/ahash/struct.AHashSet.html)
+(only available with feature flag `ahash` enabled)
 
 Please open an issue on the repository website
-[https://github.com/StefanMathis/planar_convex_hull](https://github.com/StefanMathis/planar_convex_hull) if you need an implementation of [`ConvexHull`] for additional collection types. You can also
-use the [`newtype`](https://doc.rust-lang.org/rust-by-example/generics/new_types.html)
-idiom as shown in the example for a reference of a foreign collection instead
-(since all methods of [`ConvexHull`] operate on shared references).
+[https://github.com/StefanMathis/planar_convex_hull](https://github.com/StefanMathis/planar_convex_hull)
+if you need an implementation of [`ConvexHull`] for additional collection types.
+You can also use the
+[`newtype`](https://doc.rust-lang.org/rust-by-example/generics/new_types.html)
+idiom as shown in the `MySlice` implementation instead.
 
 # Feature flags
 
@@ -108,6 +141,6 @@ J. Zhejiang Univ. - Sci. A 8, 1210–1217 (2007). <https://doi.org/10.1631/jzus.
 
 **Note**: As of June 2026, \[2\] is unfortunately offline, but can still be
 reached using the fantastic Wayback machine:
-<https://web.archive.org/web/20250818231303/https://www.codeproject.com/Articles/1210225/Fast-and-improved-D-Convex-Hull-algorithm-and-its>
+<https://web.archive.org/web/20250818231303/https://www.codeproject.com/Articles/1210225/Fast-and-improved-D-Convex-Hull-algorithm-and-its>.
 A full copy of the website fetched from the Wayback machine is stored in the
 repo (docs/convex_hull_algorithm.html).

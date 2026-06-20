@@ -11,8 +11,8 @@ modify the components. -->
 
 [![Documentation](https://docs.rs/planar_convex_hull/badge.svg)](https://docs.rs/planar_convex_hull)
 
-A lightweight library providing a trait for implementing convex hull algorithm
-on your own datatype.
+A lightweight library providing a trait for implementing a divide-and-conquer
+planar convex hull algorithm for your own datatype.
 
 The full API documentation is available at https://docs.rs/planar_convex_hull/{{VERSION}}/planar_convex_hull.
 
