@@ -5,16 +5,16 @@ planar_convex_hull
 docs/main.md and (if available docs/end.md). Do not modify this file, instead
 modify the components. -->
 
-[`ConvexHull`]: https://docs.rs/planar_convex_hull/0.3.0/planar_convex_hull/trait.ConvexHull.html
-[`convex_hull`]: https://docs.rs/planar_convex_hull/0.3.0/planar_convex_hull/trait.ConvexHull.html#method.convex_hull
-[`Index`]: https://docs.rs/planar_convex_hull/0.3.0/planar_convex_hull/struct.Index.html
+[`ConvexHull`]: https://docs.rs/planar_convex_hull/0.3.1/planar_convex_hull/trait.ConvexHull.html
+[`convex_hull`]: https://docs.rs/planar_convex_hull/0.3.1/planar_convex_hull/trait.ConvexHull.html#method.convex_hull
+[`Index`]: https://docs.rs/planar_convex_hull/0.3.1/planar_convex_hull/struct.Index.html
 
 [![Documentation](https://docs.rs/planar_convex_hull/badge.svg)](https://docs.rs/planar_convex_hull)
 
 A lightweight library providing a trait for implementing a divide-and-conquer
 planar convex hull algorithm for your own datatype.
 
-The full API documentation is available at https://docs.rs/planar_convex_hull/0.3.0/planar_convex_hull.
+The full API documentation is available at https://docs.rs/planar_convex_hull/0.3.1/planar_convex_hull.
 
 > **Feedback welcome!**  
 > Found a bug, missing docs, or have a feature request?  

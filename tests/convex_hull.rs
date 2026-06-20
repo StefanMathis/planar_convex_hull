@@ -72,9 +72,7 @@ fn test_three_points() {
         let slice = &[[0.0, 1.0], [0.0, 2.0], [0.0, -1.0]];
         let mut hull = slice.convex_hull();
         assert_eq!(hull.next(), Some((1, [0.0, 2.0])));
-        assert_eq!(hull.next(), Some((0, [0.0, 1.0])));
         assert_eq!(hull.next(), Some((2, [0.0, -1.0])));
-        assert_eq!(hull.next(), Some((0, [0.0, 1.0])));
         assert_eq!(hull.next(), None);
     }
     {
@@ -102,7 +100,6 @@ fn test_four_points() {
         let mut hull = slice.convex_hull();
         assert_eq!(hull.next(), Some((3, [1.0, 1.0])));
         assert_eq!(hull.next(), Some((1, [0.0, 2.0])));
-        assert_eq!(hull.next(), Some((0, [0.0, 1.0])));
         assert_eq!(hull.next(), Some((2, [0.0, 0.0])));
         assert_eq!(hull.next(), None);
     }
@@ -136,7 +133,6 @@ fn test_four_points() {
         let slice = &[[0.0, -4.0], [1.0, -3.0], [0.0, -3.0], [-1.0, -3.0]];
         let mut hull = slice.convex_hull();
         assert_eq!(hull.next(), Some((1, [1.0, -3.0])));
-        assert_eq!(hull.next(), Some((2, [0.0, -3.0])));
         assert_eq!(hull.next(), Some((3, [-1.0, -3.0])));
         assert_eq!(hull.next(), Some((0, [0.0, -4.0])));
         assert_eq!(hull.next(), None);
@@ -145,7 +141,6 @@ fn test_four_points() {
         let slice = &[[0.0, 0.0], [1.0, 1.0], [0.0, 1.0], [-1.0, 1.0]];
         let mut hull = slice.convex_hull();
         assert_eq!(hull.next(), Some((1, [1.0, 1.0])));
-        assert_eq!(hull.next(), Some((2, [0.0, 1.0])));
         assert_eq!(hull.next(), Some((3, [-1.0, 1.0])));
         assert_eq!(hull.next(), Some((0, [0.0, 0.0])));
         assert_eq!(hull.next(), None);
@@ -163,11 +158,7 @@ fn test_four_points() {
         let slice = &[[0.0, 0.0], [0.0, 1.0], [0.0, -1.0], [0.0, -2.0]];
         let mut hull = slice.convex_hull();
         assert_eq!(hull.next(), Some((1, [0.0, 1.0])));
-        assert_eq!(hull.next(), Some((0, [0.0, 0.0])));
-        assert_eq!(hull.next(), Some((2, [0.0, -1.0])));
         assert_eq!(hull.next(), Some((3, [0.0, -2.0])));
-        assert_eq!(hull.next(), Some((2, [0.0, -1.0])));
-        assert_eq!(hull.next(), Some((0, [0.0, 0.0])));
         assert_eq!(hull.next(), None);
     }
     {
@@ -536,5 +527,44 @@ fn test_issue_1() {
     assert_eq!(hull.next(), Some((29, [-16.0, -35.0])));
     assert_eq!(hull.next(), Some((13, [-6.0, -21.0])));
     assert_eq!(hull.next(), Some((1, [12.0, 21.0])));
+    assert_eq!(hull.next(), None);
+}
+
+#[test]
+fn test_planar_geo_bug() {
+    let points = &[
+        [0.0, 0.0],
+        [0.1, 0.0],
+        [0.2, 0.0],
+        [0.3, 0.0],
+        [0.4, 0.0],
+        [0.5, 0.0],
+        [0.6, 0.0],
+        [0.7, 0.0],
+        [0.8, 0.0],
+        [0.9, 0.0],
+        [1.0, 0.0],
+        [0.7071067811865476, 0.7071067811865475],
+        [6.123233995736766e-17, 1.0],
+        [0.0, 1.0],
+        [0.0625, 0.9375],
+        [0.125, 0.875],
+        [0.1875, 0.8125],
+        [0.25, 0.75],
+        [0.3125, 0.6875],
+        [0.375, 0.625],
+        [0.4375, 0.5625],
+        [0.5, 0.5],
+    ];
+
+    let mut hull = points.convex_hull();
+    assert_eq!(hull.next(), Some((10, [1.0, 0.0])));
+    assert_eq!(
+        hull.next(),
+        Some((11, [0.7071067811865476, 0.7071067811865475]))
+    );
+    assert_eq!(hull.next(), Some((12, [6.123233995736766e-17, 1.0])));
+    assert_eq!(hull.next(), Some((13, [0.0, 1.0])));
+    assert_eq!(hull.next(), Some((0, [0.0, 0.0])));
     assert_eq!(hull.next(), None);
 }

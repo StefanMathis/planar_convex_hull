@@ -189,9 +189,8 @@ pub trait ConvexHull: std::marker::Sync {
     assert_eq!(hull.next(), Some((3, [0.0, 2.0])));
     assert_eq!(hull.next(), None);
 
-    // All points on a single line with the same y-value everywhere. The points
-    // 2 and 3 in the middle of the line show up twice, because the convex hull
-    // goes "up and down" the x-axis
+    // All points on a single line with the same y-value everywhere - only
+    // leftmost and rightmost point are part of the convex hull
     let slice = &[
         [10.0, -2.0],
         [-10.0, -2.0],
@@ -200,11 +199,7 @@ pub trait ConvexHull: std::marker::Sync {
     ];
     let mut hull = slice.convex_hull();
     assert_eq!(hull.next(), Some((0, [10.0, -2.0])));
-    assert_eq!(hull.next(), Some((3, [3.0, -2.0])));
-    assert_eq!(hull.next(), Some((2, [0.0, -2.0])));
     assert_eq!(hull.next(), Some((1, [-10.0, -2.0])));
-    assert_eq!(hull.next(), Some((2, [0.0, -2.0])));
-    assert_eq!(hull.next(), Some((3, [3.0, -2.0])));
     assert_eq!(hull.next(), None);
 
     // Triangle with a collinear point on the hull edge
@@ -499,6 +494,12 @@ pub trait ConvexHull: std::marker::Sync {
             let orientation = 1.0 - (2.0 * (quadrant < 2) as i32 as f64);
 
             for (c, pt_c) in this.convex_hull_iter() {
+                // Exclude all degenerate partial hulls. A partial hull is one
+                // which only has one entry.
+                if is_degenerate {
+                    continue;
+                }
+
                 // Skip any non-real points. Inverting "is_finite" also catches
                 // NaN (is_infinite only catches infinite values, not NaN).
                 if !pt_c[0].is_finite() || !pt_c[1].is_finite() {
@@ -561,12 +562,6 @@ pub trait ConvexHull: std::marker::Sync {
                         }
                     }
                     _ => unreachable!(),
-                }
-
-                // Exclude all degenerate partial hulls. A partial hull is one
-                // which only has one entry.
-                if is_degenerate {
-                    continue;
                 }
 
                 let x = OrderedFloat(orientation * pt_c[0]);
